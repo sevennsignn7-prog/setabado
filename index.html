@@ -33,10 +33,14 @@
     });
 
     // ここでGASから送られてきたデータを受け取る
+    // 受信したデータをオブジェクトとして扱うための修正
     function showData(data) {
-      console.log(data); // ブラウザのコンソールで中身を確認できるようにします
-      // data.eventName があるか確認して表示
-      document.getElementById('eventName').innerText = data.eventName || "イベント名未設定";
+      // data が文字列として来ている可能性を考慮し、パースを試みる
+      const obj = (typeof data === 'string') ? JSON.parse(data) : data;
+      
+      console.log("受信データ:", obj); // コンソールで内容を確認
+      document.getElementById('eventName').innerText = obj.eventName || "イベント名未設定";
+      document.getElementById('content').style.display = "block";
     }
 
     function sendAction(status) {
