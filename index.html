@@ -2,56 +2,32 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>出欠管理</title>
+  <title>デバッグモード</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 20px; text-align: center; }
-    .btn { padding: 15px; margin: 10px 0; width: 100%; font-size: 18px; border-radius: 8px; border: none; color: white; }
-    .green { background: #1DB446; }
-    .gray { background: #AAAAAA; }
-    #content { display: none; margin-top: 20px; }
-  </style>
 </head>
 <body>
-
-  <h2 id="status">読み込み中...</h2>
-  <div id="content">
-    <h3 id="eventName">イベント名取得中...</h3>
-    <button class="btn green" onclick="sendAction('参加')">参加</button>
-    <button class="btn gray" onclick="sendAction('不参加')">不参加</button>
-    <button class="btn gray" onclick="sendAction('未定')">未定</button>
-  </div>
+  <h2 id="status">通信確認中...</h2>
+  <div id="debugLog" style="background:#eee; padding:10px; font-size:12px;"></div>
 
   <script>
     const BASE_URL = "https://script.google.com/macros/s/AKfycbzqM4NG5gRfxbbO3Bn_Sy9c9kRvKArdcSbNqo64bZRCSxbmHb1IwisgpY5zvQ372diLlw/exec";
     const eventId = new URLSearchParams(window.location.search).get("eventId");
+    function log(m) { document.getElementById('debugLog').innerHTML += m + '<br>'; }
 
-    // 1. LIFF初期化
     liff.init({ liffId: "2010509763-NKXClXbZ" }).then(() => {
-      document.getElementById('status').innerText = "イベント出欠回答";
+      log("初期化成功。データ取得開始...");
       
-      // JSONPでイベント情報を取得
+      // データ取得（JSONP）
       const s = document.createElement('script');
       s.src = BASE_URL + "?mode=detailStatus&eventId=" + eventId + "&callback=showData";
+      s.onerror = function() { log("通信エラー発生！"); };
       document.body.appendChild(s);
     });
 
-    // 2. データ表示（GASから呼び出される）
     function showData(data) {
-      document.getElementById('eventName').innerText = data.eventName || "イベント";
-      document.getElementById('content').style.display = "block";
-    }
-
-    // 3. 送信処理
-    function sendAction(status) {
-      document.getElementById('content').innerHTML = "<h3>送信中...</h3>";
-      const s = document.createElement('script');
-      s.src = BASE_URL + "?mode=submit&eventId=" + eventId + "&status=" + encodeURIComponent(status) + "&callback=finish";
-      document.body.appendChild(s);
-    }
-
-    function finish() {
-      document.body.innerHTML = "<h3>回答しました！</h3><button class='btn green' onclick='liff.closeWindow()'>閉じる</button>";
+      log("データ受信完了");
+      log("中身: " + JSON.stringify(data));
+      document.getElementById('status').innerText = "イベント: " + (data.eventName || "不明");
     }
   </script>
 </body>
