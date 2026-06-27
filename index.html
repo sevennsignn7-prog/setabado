@@ -2,57 +2,30 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>出欠回答</title>
+  <title>デバッグ</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 20px; text-align: center; }
-    .btn { padding: 15px; margin: 10px 0; width: 100%; font-size: 18px; border-radius: 8px; border: none; color: white; }
-    .green { background: #1DB446; }
-    .gray { background: #AAAAAA; }
-  </style>
 </head>
 <body>
-
-  <h2 id="eventName">読み込んでいます...</h2>
-  
-  <div id="buttons">
-    <button class="btn green" onclick="sendAction('参加')">参加</button>
-    <button class="btn gray" onclick="sendAction('不参加')">不参加</button>
-    <button class="btn gray" onclick="sendAction('未定')">未定</button>
-  </div>
+  <div id="log" style="font-size: 14px; white-space: pre-wrap;"></div>
 
   <script>
+    const logEl = document.getElementById('log');
+    function log(m) { logEl.innerText += m + "\n"; }
+    
     const BASE_URL = "https://script.google.com/macros/s/AKfycbzqM4NG5gRfxbbO3Bn_Sy9c9kRvKArdcSbNqo64bZRCSxbmHb1IwisgpY5zvQ372diLlw/exec";
     const eventId = new URLSearchParams(window.location.search).get("eventId");
 
     liff.init({ liffId: "2010509763-NKXClXbZ" }).then(() => {
-      // データを取得するスクリプトタグを生成
-      const s = document.createElement('script');
-      s.src = BASE_URL + "?mode=detailStatus&eventId=" + eventId + "&callback=showData";
-      document.body.appendChild(s);
-    });
-
-    // ここでGASから送られてきたデータを受け取る
-    // 受信したデータをオブジェクトとして扱うための修正
-    function showData(data) {
-      // data が文字列として来ている可能性を考慮し、パースを試みる
-      const obj = (typeof data === 'string') ? JSON.parse(data) : data;
+      log("初期化完了。通信開始...");
       
-      console.log("受信データ:", obj); // コンソールで内容を確認
-      document.getElementById('eventName').innerText = obj.eventName || "イベント名未設定";
-      document.getElementById('content').style.display = "block";
-    }
-
-    function sendAction(status) {
-      document.body.innerHTML = "<h3>送信中...</h3>";
-      const s = document.createElement('script');
-      s.src = BASE_URL + "?mode=submit&eventId=" + eventId + "&status=" + encodeURIComponent(status) + "&callback=finish";
-      document.body.appendChild(s);
-    }
-
-    function finish() {
-      document.body.innerHTML = "<h3>回答しました！</h3><button class='btn green' onclick='liff.closeWindow()'>閉じる</button>";
-    }
+      // JSONPではなく、fetchで生のテキストを取得して中身を確認する
+      fetch(BASE_URL + "?mode=detailStatus&eventId=" + eventId)
+        .then(res => res.text())
+        .then(text => {
+          log("受信テキスト:\n" + text);
+        })
+        .catch(e => log("エラー: " + e));
+    });
   </script>
 </body>
 </html>
