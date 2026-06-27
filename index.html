@@ -2,150 +2,66 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>出欠管理（完全デバッグ版）</title>
+  <title>出欠管理</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     .btn { padding: 15px; margin: 10px 0; width: 100%; font-size: 18px; border-radius: 8px; border: none; }
     .green { background: #1DB446; color: white; }
     .gray { background: #AAAAAA; color: white; }
-    .loading { font-size: 20px; margin-top: 20px; display: none; }
-    #done { display: none; }
-    #debugLog { white-space: pre-wrap; background: #eee; padding: 10px; margin-top: 30px; border: 1px solid #ccc; font-size: 12px; }
+    #debugLog { white-space: pre-wrap; background: #eee; padding: 10px; margin-top: 30px; font-size: 12px; }
   </style>
 </head>
 <body>
 
 <h2 id="eventName">初期化中...</h2>
-<div id="detailArea" style="margin-top:20px; display:none;">
-  <h2 id="eventTitle"></h2>
-  <h3>参加 (<span id="attendCount"></span>名)</h3>
-  <ul id="attendList"></ul>
-  <h3>不参加 (<span id="absentCount"></span>名)</h3>
-  <ul id="absentList"></ul>
-  <h3>未定 (<span id="pendingCount"></span>名)</h3>
-  <ul id="pendingList"></ul>
-  <h3>キャンセル待ち (<span id="waitCount"></span>名)</h3>
-  <ul id="waitList"></ul>
-</div>
 <div id="buttons">
-  <button class="btn green" onclick="send('参加')">参加</button>
-  <button class="btn gray" onclick="send('不参加')">不参加</button>
-  <button class="btn gray" onclick="send('未定')">未定</button>
+  <button class="btn green" onclick="sendSelectedEvent('参加')">参加</button>
+  <button class="btn gray" onclick="sendSelectedEvent('不参加')">不参加</button>
+  <button class="btn gray" onclick="sendSelectedEvent('未定')">未定</button>
 </div>
-<div id="loading" class="loading">送信中...</div>
-<div id="done"><h3>送信しました！</h3><button class="btn green" onclick="openStatus()">回答状況を見る</button></div>
 <div id="debugLog"></div>
 
 <script>
-  const embeddedEventId = '<?= eventId ?>';
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbzqM4NG5gRfxbbO3Bn_Sy9c9kRvKArdcSbNqo64bZRCSxbmHb1IwisgpY5zvQ372diLlw/exec";
   let userId = "";
-  let eventId = embeddedEventId;
+  let eventId = new URLSearchParams(location.search).get("eventId");
 
-  function debug(msg) {
-    const box = document.getElementById("debugLog");
-    const timestamp = new Date().toLocaleTimeString();
-    box.textContent += `[${timestamp}] ${msg}\n`;
-    console.log(msg);
-  }
+  function debug(msg) { document.getElementById("debugLog").textContent += msg + "\n"; }
 
-// ログ出力用関数 debug() の直下などに配置してください
-  debug("現在のドメイン: " + window.location.hostname);
-  if (window.location.hostname.includes("googleusercontent.com")) {
-    debug("★警告: OAuth画面にリダイレクトされています！");
-  }
-
-  // 1. LIFF初期化と実行フローを分離
+  // 1. LIFF初期化
   window.onload = function() {
-    debug("=== window.onload start ===");
-    
-    // 重要な変更：LIFF初期化オプションを追加
-    debug("liff.init 呼び出し開始...");
-    liff.init({ 
-      liffId: "2010509763-NKXClXbZ",
-      withLoginOnExternalBrowser: true
-    })
-    .then(() => {
-      // ログインチェックをスキップし、初期化成功のみを追う
-      debug("LIFF init 完了 (成功)");
-      runMainLogic();
-    })
-    .catch((err) => {
-      // ここでエラーが出ても、ページそのものは維持する
-      debug("LIFF init 警告 (エラーだが続行): " + err);
-      runMainLogic(); 
-    });
+    liff.init({ liffId: "2010509763-NKXClXbZ" })
+      .then(() => {
+        liff.getProfile().then(p => { userId = p.userId; });
+        loadData();
+      })
+      .catch(e => debug("initエラー: " + e));
   };
 
-  // 2. 初期化後のロジック
-  function runMainLogic() {
-    debug("=== runMainLogic start ===");
-    try {
-      const params = new URLSearchParams(location.search);
-      eventId = params.get("eventId") || embeddedEventId;
-      document.getElementById("eventName").innerText = "イベントID: " + eventId;
-      
-      liff.getProfile().then(profile => {
-        userId = profile.userId;
-        debug("userId 取得成功: " + userId);
-        fetchDetailStatus();
-      }).catch(err => debug("getProfile エラー: " + err));
-      
-    } catch (e) {
-      debug("runMainLogic error: " + e);
-    }
+  // 2. データ取得（JSONP）
+  function loadData() {
+    const s = document.createElement('script');
+    s.src = BASE_URL + "?mode=detailStatus&eventId=" + eventId + "&callback=onDataLoaded";
+    document.body.appendChild(s);
   }
 
-  // 3. データ取得
-  function fetchDetailStatus() {
-    const url = "https://script.google.com/macros/s/AKfycbzqM4NG5gRfxbbO3Bn_Sy9c9kRvKArdcSbNqo64bZRCSxbmHb1IwisgpY5zvQ372diLlw/exec"
-      + "?mode=detailStatus&eventId=" + eventId;
-    
-    debug("detailStatus fetch開始: " + url);
-    fetch(url)
-      .then(res => res.json())
-      .then(detail => {
-        debug("detailStatus 取得成功");
-        document.getElementById("eventTitle").innerText = detail.eventName;
-        document.getElementById("attendCount").innerText = detail.attendCount;
-        document.getElementById("absentCount").innerText = detail.absentCount;
-        document.getElementById("pendingCount").innerText = detail.pendingCount;
-        document.getElementById("waitCount").innerText = detail.waitCount;
-
-        const fill = (id, arr, isWait) => {
-          const ul = document.getElementById(id);
-          ul.innerHTML = "";
-          arr.forEach(item => {
-            const li = document.createElement("li");
-            li.innerText = isWait ? `${item.order}番目: ${item.name}` : item.name;
-            ul.appendChild(li);
-          });
-        };
-
-        fill("attendList", detail.attend);
-        fill("absentList", detail.absent);
-        fill("pendingList", detail.pending);
-        fill("waitList", detail.wait, true);
-
-        document.getElementById("detailArea").style.display = "block";
-      })
-      .catch(e => debug("fetch error: " + e));
+  function onDataLoaded(data) {
+    document.getElementById("eventName").innerText = data.eventName;
+    debug("データ受信成功");
   }
 
-  // 4. 送信処理
-  function send(status) {
-    debug("send呼び出し: " + status);
-    document.getElementById("buttons").style.display = "none";
-    document.getElementById("loading").style.display = "block";
+  // 3. 送信処理（JSONP）
+  function sendSelectedEvent(status) {
+    debug("送信開始: " + status);
+    const s = document.createElement('script');
+    s.src = BASE_URL + "?mode=submit&eventId=" + eventId + "&userId=" + userId + "&status=" + encodeURIComponent(status) + "&callback=onSent";
+    document.body.appendChild(s);
+  }
 
-    fetch("https://script.google.com/macros/s/AKfycbzqM4NG5gRfxbbO3Bn_Sy9c9kRvKArdcSbNqo64bZRCSxbmHb1IwisgpY5zvQ372diLlw/exec", {
-      method: "POST",
-      body: JSON.stringify({ mode: "liff", userId: userId, eventId: eventId, status: status })
-    }).then(() => {
-      debug("送信完了");
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("done").style.display = "block";
-    }).catch(e => debug("送信エラー: " + e));
+  function onSent() {
+    alert("送信しました！");
+    liff.closeWindow();
   }
 </script>
 </body>
