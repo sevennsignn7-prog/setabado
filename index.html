@@ -13,7 +13,8 @@
 </head>
 <body>
 
-  <h2 id="eventName">読み込み中...</h2>
+  <h2 id="eventName">読み込んでいます...</h2>
+  
   <div id="buttons">
     <button class="btn green" onclick="sendAction('参加')">参加</button>
     <button class="btn gray" onclick="sendAction('不参加')">不参加</button>
@@ -25,13 +26,17 @@
     const eventId = new URLSearchParams(window.location.search).get("eventId");
 
     liff.init({ liffId: "2010509763-NKXClXbZ" }).then(() => {
+      // データを取得するスクリプトタグを生成
       const s = document.createElement('script');
       s.src = BASE_URL + "?mode=detailStatus&eventId=" + eventId + "&callback=showData";
       document.body.appendChild(s);
     });
 
+    // ここでGASから送られてきたデータを受け取る
     function showData(data) {
-      document.getElementById('eventName').innerText = data.eventName;
+      console.log(data); // ブラウザのコンソールで中身を確認できるようにします
+      // data.eventName があるか確認して表示
+      document.getElementById('eventName').innerText = data.eventName || "イベント名未設定";
     }
 
     function sendAction(status) {
