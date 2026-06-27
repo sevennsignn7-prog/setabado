@@ -2,67 +2,36 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>出欠管理</title>
+  <title>デバッグ画面</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .btn { padding: 15px; margin: 10px 0; width: 100%; font-size: 18px; border-radius: 8px; border: none; }
-    .green { background: #1DB446; color: white; }
-    .gray { background: #AAAAAA; color: white; }
-    #debugLog { white-space: pre-wrap; background: #eee; padding: 10px; margin-top: 30px; font-size: 12px; }
-  </style>
 </head>
 <body>
+  <h2 id="status">初期化中...</h2>
+  <div id="debugLog" style="background:#eee; padding:10px; font-size:12px;"></div>
 
-<h2 id="eventName">初期化中...</h2>
-<div id="buttons">
-  <button class="btn green" onclick="sendSelectedEvent('参加')">参加</button>
-  <button class="btn gray" onclick="sendSelectedEvent('不参加')">不参加</button>
-  <button class="btn gray" onclick="sendSelectedEvent('未定')">未定</button>
-</div>
-<div id="debugLog"></div>
-
-<script>
-  const BASE_URL = "https://script.google.com/macros/s/AKfycbzqM4NG5gRfxbbO3Bn_Sy9c9kRvKArdcSbNqo64bZRCSxbmHb1IwisgpY5zvQ372diLlw/exec";
-  let userId = "";
-  let eventId = new URLSearchParams(location.search).get("eventId");
-
-  function debug(msg) { document.getElementById("debugLog").textContent += msg + "\n"; }
-
-  // 1. LIFF初期化
-  window.onload = function() {
+  <script>
+    function log(m) { document.getElementById('debugLog').innerHTML += m + '<br>'; }
+    
+    // LIFF初期化
     liff.init({ liffId: "2010509763-NKXClXbZ" })
       .then(() => {
-        liff.getProfile().then(p => { userId = p.userId; });
-        loadData();
+        document.getElementById('status').innerText = "初期化完了";
+        log("LIFF OK");
+        // データ取得
+        const eventId = new URLSearchParams(window.location.search).get("eventId");
+        log("ID: " + eventId);
+        
+        // 動作テスト用ボタンを表示
+        document.body.innerHTML += '<button onclick="testAction()">動作テスト</button>';
       })
-      .catch(e => debug("initエラー: " + e));
-  };
+      .catch(err => {
+        document.getElementById('status').innerText = "初期化失敗";
+        log("Error: " + err);
+      });
 
-  // 2. データ取得（JSONP）
-  function loadData() {
-    const s = document.createElement('script');
-    s.src = BASE_URL + "?mode=detailStatus&eventId=" + eventId + "&callback=onDataLoaded";
-    document.body.appendChild(s);
-  }
-
-  function onDataLoaded(data) {
-    document.getElementById("eventName").innerText = data.eventName;
-    debug("データ受信成功");
-  }
-
-  // 3. 送信処理（JSONP）
-  function sendSelectedEvent(status) {
-    debug("送信開始: " + status);
-    const s = document.createElement('script');
-    s.src = BASE_URL + "?mode=submit&eventId=" + eventId + "&userId=" + userId + "&status=" + encodeURIComponent(status) + "&callback=onSent";
-    document.body.appendChild(s);
-  }
-
-  function onSent() {
-    alert("送信しました！");
-    liff.closeWindow();
-  }
-</script>
+    function testAction() {
+      alert("ボタンは正常です！");
+    }
+  </script>
 </body>
 </html>
