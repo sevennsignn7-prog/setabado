@@ -2,22 +2,36 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>出欠回答</title>
+  <title>出欠回答デバッグ</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
-  <h2 id="status">読み込み中...</h2>
+  <h2 id="status">接続確認中...</h2>
+  <div id="debug" style="color:red; font-size:12px;"></div>
+
   <script>
     const eventId = new URLSearchParams(window.location.search).get("eventId");
-    // GAS側で呼び出される関数をグローバルに定義しておく
+    const debugDiv = document.getElementById('debug');
+    
+    // エラーキャッチ用
+    window.onerror = function(msg, url, line) {
+      debugDiv.innerText += "エラー: " + msg + " (行: " + line + ")\n";
+      return false;
+    };
+
+    // GASから呼び出される関数
     window.showData = function(data) {
       document.getElementById('status').innerText = "イベント: " + data.eventName;
-      console.log(data);
     };
 
     liff.init({ liffId: "2010509763-NKXClXbZ" }).then(() => {
       const s = document.createElement('script');
       s.src = "https://script.google.com/macros/s/AKfycbzqM4NG5gRfxbbO3Bn_Sy9c9kRvKArdcSbNqo64bZRCSxbmHb1IwisgpY5zvQ372diLlw/exec?mode=detailStatus&eventId=" + eventId + "&callback=showData";
+      
+      // 通信失敗時のイベント
+      s.onerror = function() {
+        debugDiv.innerText = "スクリプト読み込みエラーが発生しました。";
+      };
       document.body.appendChild(s);
     });
   </script>
